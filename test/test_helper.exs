@@ -6,7 +6,8 @@ Application.put_env(:phoenix_live_reload, MyApp.Endpoint,
       ~r{priv/static/.*(js|css|png|jpeg|jpg|gif)$},
       ~r{web/views/.*(ex)$},
       ~r{web/templates/.*(eex)$}
-    ]
+    ],
+    recompile_patterns: [~r{web/views/.*(js|css)$}],
   ]
 )
 

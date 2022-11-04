@@ -39,6 +39,16 @@ defmodule Phoenix.LiveReloader.ChannelTest do
     assert content =~ "[debug] Live reload: priv/static/long_gone.js"
   end
 
+  test "logs on live recompile", %{socket: socket} do
+    content =
+      ExUnit.CaptureLog.capture_log(fn ->
+        send(socket.channel_pid, file_event("web/views/component.css", :removed))
+        refute_push "assets_change", _
+      end)
+
+    assert content =~ "[debug] Live recompile: web/views/component.css"
+  end
+
   test "does not send a notification when asset comes from _build", %{socket: socket} do
     send(
       socket.channel_pid,

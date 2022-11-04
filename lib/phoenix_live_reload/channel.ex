@@ -15,6 +15,7 @@ defmodule Phoenix.LiveReloader.Channel do
       socket =
         socket
         |> assign(:patterns, config[:patterns] || [])
+        |> assign(:recompile_patterns, config[:recompile_patterns] || [])
         |> assign(:debounce, config[:debounce] || 0)
 
       {:ok, socket}
@@ -24,15 +25,23 @@ defmodule Phoenix.LiveReloader.Channel do
   end
 
   def handle_info({:file_event, _pid, {path, _event}}, socket) do
-    %{patterns: patterns, debounce: debounce} = socket.assigns
+    %{patterns: patterns, recompile_patterns: recompile_patterns, debounce: debounce} =
+      socket.assigns
 
-    if matches_any_pattern?(path, patterns) do
+    recompile_pattern? = matches_any_pattern?(path, recompile_patterns)
+
+    if matches_any_pattern?(path, patterns) or recompile_pattern? do
       ext = Path.extname(path)
 
       for {path, ext} <- [{path, ext} | debounce(debounce, [ext], patterns)] do
-        asset_type = remove_leading_dot(ext)
-        Logger.debug("Live reload: #{Path.relative_to_cwd(path)}")
-        push(socket, "assets_change", %{asset_type: asset_type})
+        if recompile_pattern? do
+          Logger.debug("Live recompile: #{Path.relative_to_cwd(path)}")
+          Phoenix.CodeReloader.Server.reload!(socket.endpoint)
+        else
+          asset_type = remove_leading_dot(ext)
+          Logger.debug("Live reload: #{Path.relative_to_cwd(path)}")
+          push(socket, "assets_change", %{asset_type: asset_type})
+        end
       end
     end
 
